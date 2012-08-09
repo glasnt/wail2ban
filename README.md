@@ -76,4 +76,13 @@ As with all automated systems, there can be some false-positives.
 
 **Timeouts** - IPs are only banned for specific period of time. After this time, they are removed from the firewall by the script. In addition, timed scheduled tasks are produced to force the removal of these rules, should the script fail to do so. 
 
-*Jailbreak** - a configuration called `-jailbreak` can be run against the script at any time to immediately remove all banned IPs. 
+**Jailbreak** - a configuration called `-jailbreak` can be run against the script at any time to immediately remove all banned IPs. 
+
+ongoing work 
+------------
+
+This script has room for improvement. Presently, it only handles Windows 2008-style firewall usage. This can be expanded by changing the code near the `BLOCK_TYPE` variable, to overload it. 
+
+There can also be work relating to the service-like execution of this script, so it's always running. This can be acheieved using something like [non-sucking service manager](http://nssm.cc/), but that is left as an exercise for the reader. 
+
+
