@@ -7,6 +7,9 @@
 #   
 ################################################################################
 # 
+# BETA - Added functionality for staged banning levels. 
+# BETA - Added exponential ban times, currently based on 5^x
+#
 # For help, read the below function. 
 #
 function help { 
@@ -34,7 +37,6 @@ function help {
 
 $CHECK_WINDOW = 120  # We check the most recent X seconds of log.         Default: 120
 $CHECK_COUNT  = 5    # Ban after this many failures in search period.     Default: 5
-$BAN_TIME     = 300  # Ban for this many seconds.          			      Default: 300
 	
 ################################################################################
 #  Files
@@ -43,6 +45,7 @@ $wail2banInstall = ""+(Get-Location)+"\"
 $wail2banScript  = $wail2banInstall+"wail2ban.ps1"
 $logFile         = $wail2banInstall+"wail2ban_log.log"
 $ConfigFile      = $wail2banInstall+"wail2ban_config.ini"
+$BannedIPLog = $wail2banInstall+"bannedIPLog.ini"
 
 ################################################################################
 # Constructs
@@ -61,6 +64,8 @@ $EventRemoveFailure = $EventRemoveSuccess + $EventFailureModifier
 
 New-Variable -Name RegexIP -Force -Value ([regex]'(?<First>2[0-4]\d|25[0-5]|[01]?\d\d?)\.(?<Second>2[0-4]\d|25[0-5]|[01]?\d\d?)\.(?<Third>2[0-4]\d|25[0-5]|[01]?\d\d?)\.(?<Fourth>2[0-4]\d|25[0-5]|[01]?\d\d?)')
 
+# Ban Count structure
+$BannedIPs = @{}
 # Incoming event structure
 $CheckEvents = New-object system.data.datatable("CheckEvents")
 $null = $CheckEvents.columns.add("EventLog")
@@ -187,7 +192,7 @@ function netmask($MaskLength) {
 }
   
 #check if IP is whitelisted
-function whitelisted( $IP) { 
+function whitelisted($IP) { 
 	foreach ($white in $Whitelist) {
 		if ($IP -eq $white) { $Whitelisted = "Uniquely listed."; break} 
 		if ($white.contains("/")) { 
@@ -202,18 +207,56 @@ function whitelisted( $IP) {
 	return $Whitelisted
 } 
 
+#Read in the saved file of settings. Only called on script start, such as after reboot
+function pickupBanDuration { 
+#
+	if (Test-Path $BannedIPLog) { 
+		log_debug "Read in Banned IP Log from file $BannedIPLog"
+		get-content $BannedIPLog | %{ 
+			#log_debug "$($_.split(" ")[0]) is $($_.split(" ")[1])"	
+			$BannedIPs.Add($_.split(" ")[0],$_.split(" ")[1])
+		}			
+	} else { log_debug "No IPs to collect from BannedIPLog" }
+} 
+
+#Get the ban time for an IP, in seconds
+function getBanDuration ($IP) {	
+	if ($BannedIPs.ContainsKey($IP)) { 
+		[int]$Setting = $BannedIPs.Get_Item($IP)
+	} else { 
+		$Setting = 0
+		$BannedIPs.Add($IP,$Setting)
+	} 
+	$Setting++
+	#if ($Setting -lt $BanSetting.length-1) { $Setting++ }
+	$BannedIPs.Set_Item($IP,$Setting)
+	$BanDuration = [math]::pow(5,$Setting)*60 #$BanSetting[$setting]
+	log_debug "IP has the new setting of $setting, being $BanDuration seconds"		
+	if (Test-Path $BannedIPLog) { clear-content $BannedIPLog } else { New-Item $BannedIPLog -type file }
+	$BannedIPs.keys  | %{ "$_ "+$BannedIPs.Get_Item($_) | Out-File $BannedIPLog -Append }
+	return $BanDuration
+}
+
 # Ban the IP (with checking)
 function jail_lockup ($IP, $ExpireDate) { 
 	log_debug "Going to go about banning $IP"
 	$result = whitelisted($IP)
 	if ($result) { log_warning "$IP is whitelisted, except from banning. Why? $result " } 
 	else {
-		if (!$ExpireDate) { $ExpireDate = (Get-Date).AddSeconds($BAN_TIME)}
+		if (!$ExpireDate) { 
+			$BanDuration = getBanDuration($IP)
+			$ExpireDate = (Get-Date).AddSeconds($BanDuration)
+		}
+		log_debug "Going to ban $IP for $BanDuration seconds, expiry $ExpireDate"
 	
 		if ((rule_exists $IP) -eq "Yes") { log_warning ("IP $IP already blocked.")
 		} else {
-			firewall_add $IP $ExpireDate	
-			timed_release $IP
+			if ($BanDuration -gt 0) {
+				firewall_add $IP $ExpireDate; timed_release $IP $BanDuration}
+			else {
+				firewall_add $IP "None, permanent ban"
+				log_information "Wowserz! $IP has been permabanned!"; log_event "IP $IP has been permabanned."
+			}
 		}
 	}
 }
@@ -225,24 +268,26 @@ function jail_release ($IP) {
 	} else {  
 		firewall_remove $IP
 	}
-	
 }
 
 # Add the Firewall Rule
 function firewall_add ($IP, $ExpireDate) { 
+	if ($ExpireDate -match "permanent") { $FirewallRule = "wail2ban: Permenant ban"; $BanType = "Permenant" }
+    else { $FirewallRule = $FirewallRulePrefix;  $BanType = "Temporary" }
 	switch($BLOCK_TYPE) {
 		"NETSH" {
-		$Rule = "netsh advfirewall firewall add rule name=`"$FirewallRulePrefix $IP`" dir=in protocol=any action=block remoteip=$IP description=`"Expire: $ExpireDate`"" }
+		$Rule = "netsh advfirewall firewall add rule name=`"$FirewallRule $IP`" dir=in protocol=any action=block remoteip=$IP description=`"Expire: $ExpireDate`"" }
 		default { log_error "Don't have a known Block Type. $BLOCK_TYPE" }
 	}
 	if ($rule) { 
 		log_debug "Firewall rule: $rule"
 		$result = invoke-expression $rule
 		if ($result -contains "Ok.") {
-			log_actioned "Firewall rule added for $IP"
-			log_event "Added IP $IP to firewall rules" ADD OK
+			$BanMsg = "$BanType firewall rule added for $IP"
+			log_actioned "$BanMsg"
+			log_event "$BanMsg" ADD OK
 		} else { 
-			$Message = "Failure adding firewall rule for $IP Error: $result"
+			$Message = "Failure adding $($BanType.ToLower()) firewall rule for $IP Error: $result"
 			log_error $Message 
 			log_event $Message ADD FAIL
 		}
@@ -280,7 +325,11 @@ function unban_old_records {
 			if ($ReleaseDate -lt ((Get-Date))) { 
 				jail_release $IP 
 			} else { 					
-				log_debug "Current Rule: $IP, til $ReleaseDate, $([int]([datetime]$ReleaseDate- (Get-Date)).TotalSeconds)s to go."
+				if ($ReleaseDate -match 'None') 
+					{ log_debug "Current rule: $IP, permabanned." 
+				} else { 
+					#log_debug "Current Rule: $IP, til $ReleaseDate, $([int]([datetime]$ReleaseDate- (Get-Date)).TotalSeconds)s to go."
+				} 
 			}
 		}
 	}	
@@ -304,19 +353,22 @@ function WMIDateStringToDateTime( [String] $iSt ) {
 } 
 
 # Set up a scheduled task to release the banned IP
-function timed_release ($IP) { 
-    $date = (get-date).AddSeconds($BAN_TIME)
-    $time = (get-date $date -format HH:mm)
-    $date =  (get-date $date -format dd/MM/yyyy)
-    $invoke = "schtasks /create /tn `"$SchTaskName $IP`"  /TR `"powershell $wail2banScript -unban $IP`" /sc ONCE  /sd $date /st $time /f  /NP /RL HIGHEST"
-    log_debug "Invoke remove task: $invoke"
-    $output = invoke-expression $invoke
+function timed_release ($IP, $BanDuration) { 
+    $date = (get-date).AddSeconds($BanDuration)
+	if ($date -lt (get-date)) { log_debug "!!!!! You can't schedule events to execute in the past" }
+	else {
+		$time = (get-date $date -format HH:mm)
+		$date =  (get-date $date -format dd/MM/yyyy)
+		$invoke = "schtasks /create /tn `"$SchTaskName $IP`"  /TR `"powershell $wail2banScript -unban $IP`" /sc ONCE  /sd $date /st $time /f  /NP /RL HIGHEST"
+		log_debug "Invoke remove task: $invoke"
+		$output = invoke-expression $invoke
 
-	if ($output -match "SUCCESS") { 
-		log_debug "Task $SchTaskName created successfully" 
-	} else { 
-		log_error "Task $SchTaskName creation failed: $output" 
-	}	
+		if ($output -match "SUCCESS") { 
+			log_debug "Task '$SchTaskName $IP' created successfully" 
+		} else { 
+			log_error "Task '$SchTaskName $IP' creation failed: $output" 
+		}	
+	}
 } 
 
 # Remove recorded access attempts, by IP, or expired records if no IP provided.
@@ -350,7 +402,7 @@ if ($setting) { log_information "wail2ban started. $setting" }
 #Display current configuration.
 if ($args -match "-config") { 
 	write-host "`nwail2ban is currently configured to: `n ban IPs for " -nonewline
-	write-host $BAN_TIME -foregroundcolor "cyan" -nonewline
+	write-host "various" -foregroundcolor "cyan" -nonewline
 	write-host " minutes, `n if more than " -nonewline
 	write-host $CHECK_COUNT -foregroundcolor "cyan" -nonewline
 	write-host " failed attempts are found in a " -nonewline
@@ -358,7 +410,7 @@ if ($args -match "-config") {
 	write-host " second window. `nThis process will loop every time a new record appears. "
 	"`nIt's currently checking:"
 	foreach ($event in $CheckEvents ) { 
-		"- "+$Event.EventLog+" event log for "+$Event.EventDescription+" (Event "+$Event.EventID+")"
+		if ($Event.EventID -ne 1010) { "- "+$Event.EventLog+" event log for "+$Event.EventDescription+" (Event "+$Event.EventID+")"}
 	}
 	"`nAnd we're whitelisting: "
 	foreach ($white in $whitelist) { 
@@ -437,9 +489,13 @@ $query = "SELECT * FROM __instanceCreationEvent WHERE TargetInstance ISA 'Win32_
 log_debug "The Query: $query"
 log_information "The Whitelist: $whitelist"
 log_debug "The Self-list: $Selflist"
-log_debug " `n* start * `n "
+
+pickupBanDuration
+
+log_debug "  * start * `n "
 
 #Hardcore logging
+
 $ErrorActionPreference="SilentlyContinue"; Stop-Transcript | out-null
 $ErrorActionPreference = "Continue"
 $null = Start-Transcript -path $wail2banInstall\superlog.log -append
@@ -449,7 +505,7 @@ $null = Start-Transcript -path $wail2banInstall\superlog.log -append
 
 Register-WMIEvent -Query $query -sourceidentifier $SinkName
 do { #bedobedo
-	log_debug "Waiting for new event.."
+	#log_debug "Waiting for new event.."
 	$new_event = wait-event -sourceidentifier $SinkName  
 	$TheEvent = $new_event.SourceeventArgs.NewEvent.TargetInstance
 	
@@ -467,7 +523,7 @@ do { #bedobedo
 
 				$IPCount = 0
 				foreach ($a in $Entry.Values) { if ($IP -eq $a[0]) { $IPCount++} }		
-				log_debug "Event Recorded: $($RecordID): IP= $IP, Event ID = $($TheEvent.EventCode). Count: $IPCount. "							
+				log_debug "Event Recorded: $($RecordID): IP: $IP, Event ID: $($TheEvent.EventCode). Count: $IPCount. "							
 				
 				if ($IPCount -ge $CHECK_COUNT) { 
 					jail_lockup $IP		
