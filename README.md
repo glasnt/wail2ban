@@ -63,7 +63,18 @@ what wail2ban does
 
 wail2ban is a real-time event sink for these messages. As messages come in, wail2ban takes note of the time of the attempt and the IP used in the attempt. Given enough attempts in a specific period of time, wail2ban will generate a firewall rule to block all access to the client machine for a certain period of time. 
 
-In a default setup, if an IP attempts 5 failed passwords in a 2 minute period, they get banned from attempting again for 5 minutes. 
+In a default setup, if an IP attempts 5 failed passwords in a 2 minute period, they get banned from attempting again for a period of time.
+
+How long? Well, that depends on how many times they've been banned before!
+
+There is a file called BannnedIPLog.ini that will keep a count of how many times an IP has been banned. 
+
+First Offense: 5 minutes
+Second Offense: 25 minutes
+Third Offense: 2 hours
+n Offense: 5 ^ n minutes
+
+This allows for scaling of bans, but prevent permenant bans, which may cause issues in the future as IPs are reassigned around the blagosphere. 
 
 failsafes 
 ---------
