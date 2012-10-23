@@ -68,11 +68,11 @@ In a default setup, if an IP attempts 5 failed passwords in a 2 minute period, t
 How long? Well, that depends on how many times they've been banned before!
 
 There is a file called BannnedIPLog.ini that will keep a count of how many times an IP has been banned. 
-
-First Offense: 5 minutes
-Second Offense: 25 minutes
-Third Offense: 2 hours
-n Offense: 5 ^ n minutes
+ 
+ * First Offense: 5 minutes
+ * Second Offense: 25 minutes
+ * Third Offense: 2 hours
+ * n Offense: 5 ^ n minutes
 
 This allows for scaling of bans, but prevent permenant bans, which may cause issues in the future as IPs are reassigned around the blagosphere. 
 
