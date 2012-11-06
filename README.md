@@ -24,14 +24,7 @@ Installing wail2ban is a case of a view simple tasks:
 commandline execution
 ---------------------
 
-There are a number of options to run wail2ban on the fly. 
-
-
- * `-debug`   : run the script with coloured standard out text
- * `-monitor` : run the script, where only the banned IP and unbanned IP messages are displayed in standard out. 
- * `-verbose` : run the script, with a heap of output going to a log file
- * `-quiet`   : run the script, with no output, either to file or standard out. 
-
+wail2ban has `write-debug` things through it, just uncomment the `$DebugPreference` line to enable. This will output nice things to CMD, if running ad-hoc.
 
 There are also a number of options that can be run against the script to control it: 
  
@@ -69,12 +62,11 @@ How long? Well, that depends on how many times they've been banned before!
 
 There is a file called BannnedIPLog.ini that will keep a count of how many times an IP has been banned. 
 
-First Offense: 5 minutes
-Second Offense: 25 minutes
-Third Offense: 2 hours
-n Offense: 5 ^ n minutes
+The punishment time is based on the function `y=5^x`, where x is the amount of times it has been banned, and y is the amount of minutes it's banned for. 
 
 This allows for scaling of bans, but prevent permenant bans, which may cause issues in the future as IPs are reassigned around the blagosphere. 
+
+There is also a `$MAX_BANDURATION` in place, which means that an IP cannot be banned for more than 3 months. Given the ban duration function gives values of years at the 10th increment, it's better to cap things out.
 
 failsafes 
 ---------
@@ -85,9 +77,9 @@ As with all automated systems, there can be some false-positives.
 
 **Self-list** - the script automatically adds a set of IPs to the whitelist that it knows as not to ban, based on the configured static IPs on the host machine. That is, it will ignore attempts from itself (or event logs which list it's own IP in the message). 
 
-**Timeouts** - IPs are only banned for specific period of time. After this time, they are removed from the firewall by the script. In addition, timed scheduled tasks are produced to force the removal of these rules, should the script fail to do so. 
+**Timeouts** - IPs are only banned for specific period of time. After this time, they are removed from the firewall by the script. The timeouts are parsed once a new failed attempt is captured by the system. This may mean that IPs are unbanned after their exact unlock time, but for sufficiently attacked systems, this difference is not a major issue.
 
-**Jailbreak** - a configuration called `-jailbreak` can be run against the script at any time to immediately remove all banned IPs. 
+**Jailbreak** - a configuration called `-jailbreak` can be run against the script at any time to immediately remove all banned IPs. All their counters are reset, and it is as if the IP never tried to attack the machine.
 
 ongoing work 
 ------------
