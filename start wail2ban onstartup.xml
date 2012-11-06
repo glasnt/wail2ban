@@ -36,7 +36,7 @@
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>C:\scripts\wail2ban\run.bat</Command>
+      <Command>C:\scripts\wail2ban\start_wail2ban.bat</Command>
     </Exec>
   </Actions>
 </Task>
