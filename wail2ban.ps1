@@ -26,9 +26,8 @@ function help {
 }
 
 
-#$DebugPreference = "continue"
+$DebugPreference = "continue"
 
-$host.UI.RawUI.BufferSize = new-object System.Management.Automation.Host.Size(130,100)
 ################################################################################
 #  Constants
 
@@ -64,6 +63,7 @@ $null = $CheckEvents.columns.add("EventID")
 $null = $CheckEvents.columns.add("EventDescription")
 	  
 $WhiteList = @()
+#$host.UI.RawUI.BufferSize = new-object System.Management.Automation.Host.Size(100,50)
 
 #You can overload the BlockType here for 2003, if you feel like having fun. 
 $OSVersion = invoke-expression "wmic os get Caption /value"
@@ -245,12 +245,12 @@ function firewall_add ($IP, $ExpireDate) {
 	}
 	if ($rule) { 
 		$result = invoke-expression $rule
-		if ($result -contains "Ok.") {
+		if ($LASTEXITCODE -eq 0) {
 			$BanMsg = "Action Successful: Firewall rule added for $IP, expiring on $ExpireDate"
 			actioned "$BanMsg"
 			event "$BanMsg" ADD OK
 		} else { 
-			$Message = "Action Failure: could not add firewall rule for $IP Error: $result"
+			$Message = "Action Failure: could not add firewall rule for $IP,  error: `"$result`". Return code: $LASTEXITCODE"
 			error $Message 
 			event $Message ADD FAIL
 		}
@@ -265,11 +265,11 @@ function firewall_remove ($IP) {
 	}	 
 	if ($rule) { 
 		$result = invoke-expression $rule
-		if ($result -match "Ok.") {
+		if ($LASTEXITCODE -eq 0) {
 			actioned "Action Successful: Firewall ban for $IP removed"
 			event "Removed IP $IP from firewall rules"  REMOVE OK
 		} else { 
-			$Message = "Action Failure: could not remove firewall rule for $IP : $result" 
+			$Message = "Action Failure: could not remove firewall rule for $IP,  error: `"$result`". Return code: $LASTEXITCODE"
 			error $Message
 			event $Message REMOVE FAIL
 		}
@@ -451,4 +451,3 @@ do { #bedobedo
 	Remove-event  -sourceidentifier $SinkName  
 	
 } while ($true)
-
