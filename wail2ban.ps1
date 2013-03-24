@@ -440,10 +440,8 @@ do { #bedobedo
 				jail_lockup $IP		
 				clear_attempts $IP
 			} 
-				
 			clear_attempts
 			unban_old_records
-			#if you want to generate HTML, call this here: .\wail2ban_htmlgen.ps1
 		}
 	}
 	}
