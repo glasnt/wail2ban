@@ -5,6 +5,13 @@ wail2ban
 
 wail2ban is a windows port of the basic functionality of [fail2ban](http://www.fail2ban.org/), and combining elements of [ts_block](https://github.com/EvanAnderson/ts_block). 
 
+`*new*` htmlgen
+--------
+I've added a script that will grep the wail2ban log file, and generate some nice statistics, and show the top banned IPs by country. 
+[Sample Report](http://manatee.anchor.net.au/wail2ban/)
+
+If you want to enable this, grok the main wail2ban.ps1 script for the call to `wail2ban_htmlgen.ps1`, and enable it (remove the comment)
+
 
 overview
 --------

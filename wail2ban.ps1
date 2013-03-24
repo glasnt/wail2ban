@@ -440,14 +440,14 @@ do { #bedobedo
 				jail_lockup $IP		
 				clear_attempts $IP
 			} 
-				#KM test move cleanup - only remove old records one a new attempt has been made - removes the possbility of <localmachine> cleaning
+				
 			clear_attempts
 			unban_old_records
+			#if you want to generate HTML, call this here: .\wail2ban_htmlgen.ps1
 		}
 	}
 	}
 	
-	#Cleanup
 	Remove-event  -sourceidentifier $SinkName  
 	
 } while ($true)
