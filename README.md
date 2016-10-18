@@ -1,16 +1,11 @@
 wail2ban
 ========
 
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
 ![Saddest Whale](http://i.imgur.com/NVlsY.png "Saddest Whale")
 
 wail2ban is a windows port of the basic functionality of [fail2ban](http://www.fail2ban.org/), and combining elements of [ts_block](https://github.com/EvanAnderson/ts_block). 
-
-`*new*` htmlgen
---------
-I've added a script that will grep the wail2ban log file, and generate some nice statistics, and show the top banned IPs by country. 
-[Sample Report](http://i.imgur.com/ufb9mvX.png)
-
-If you want to enable this, grok the main wail2ban.ps1 script for the call to `wail2ban_htmlgen.ps1`, and enable it (remove the comment)
 
 
 overview
@@ -87,6 +82,15 @@ As with all automated systems, there can be some false-positives.
 **Timeouts** - IPs are only banned for specific period of time. After this time, they are removed from the firewall by the script. The timeouts are parsed once a new failed attempt is captured by the system. This may mean that IPs are unbanned after their exact unlock time, but for sufficiently attacked systems, this difference is not a major issue.
 
 **Jailbreak** - a configuration called `-jailbreak` can be run against the script at any time to immediately remove all banned IPs. All their counters are reset, and it is as if the IP never tried to attack the machine.
+
+htmlgen
+---------
+
+I've added a script that will grep the wail2ban log file, and generate some nice statistics, and show the top banned IPs by country. 
+[Sample Report](http://i.imgur.com/ufb9mvX.png)
+
+If you want to enable this, grok the main wail2ban.ps1 script for the call to `wail2ban_htmlgen.ps1`, and enable it (remove the comment)
+
 
 ongoing work 
 ------------
