@@ -68,6 +68,7 @@ $WhiteList = @()
 #You can overload the BlockType here for 2003, if you feel like having fun. 
 $OSVersion = invoke-expression "wmic os get Caption /value"
 if ($OSVersion -match "2008") { $BLOCK_TYPE = "NETSH" }
+if ($OSVersion -match "2012") { $BLOCK_TYPE = "NETSH" }
 
 #Grep configuration file 
 switch -regex -file $ConfigFile {
