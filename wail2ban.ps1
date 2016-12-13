@@ -69,6 +69,7 @@ $WhiteList = @()
 $OSVersion = invoke-expression "wmic os get Caption /value"
 if ($OSVersion -match "2008") { $BLOCK_TYPE = "NETSH" }
 if ($OSVersion -match "2012") { $BLOCK_TYPE = "NETSH" }
+if ($OSVersion -match "2016") { $BLOCK_TYPE = "NETSH" }
 
 #Grep configuration file 
 switch -regex -file $ConfigFile {
@@ -150,10 +151,10 @@ function rule_exists ($IP) {
 	}
 	if ($rule) { 
 		$result = invoke-expression $rule
-		if ($result -eq "No rules match the specified criteria." ) {
-			return "No"
-		}  else { 
+		if ($result -match "----------") {
 			return "Yes"
+		}  else { 
+			return "No"
 		}
 	}
 }
@@ -316,7 +317,7 @@ function clear_attempts ($IP = 0) {
 	$Removes = @()
 	foreach ($a in $Entry.GetEnumerator()) { 
 		if ($IP -eq 0) { 
-			if ([int]$a.Value[1]+$CHECK_WINDOW -lt (get-date ((get-date).ToUniversalTime()) -UFormat "%s")) { $Removes += $a.Key }
+			if ([int]$a.Value[1]+$CHECK_WINDOW -lt (get-date ((get-date).ToUniversalTime()) -UFormat "%s").replace(",",".")) { $Removes += $a.Key }
 		} else { 
 			foreach ($a in $Entry.GetEnumerator()) { if ($a.Value[0] -eq $IP) {	$Removes += $a.Key } } 		
 		}
