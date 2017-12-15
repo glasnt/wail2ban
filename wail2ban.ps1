@@ -50,7 +50,7 @@ $BannedIPLog	 = $wail2banInstall+"bannedIPLog.ini"
 $RecordEventLog     = "Application"     # Where we store our own event messages
 $FirewallRulePrefix = "wail2ban block:" # What we name our Rules
 
-$EventTypes = "Application,Security,System"	  #Event logs we allow to be processed
+$EventTypes = "Application,Security,System,Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational"	  #Event logs we allow to be processed
 
 New-Variable -Name RegexIP -Force -Value ([regex]'(?<First>2[0-4]\d|25[0-5]|[01]?\d\d?)\.(?<Second>2[0-4]\d|25[0-5]|[01]?\d\d?)\.(?<Third>2[0-4]\d|25[0-5]|[01]?\d\d?)\.(?<Fourth>2[0-4]\d|25[0-5]|[01]?\d\d?)')
 
@@ -97,10 +97,7 @@ switch -regex -file $ConfigFile {
 
 
 #We also want to whitelist this machine's NICs.
-$SelfList = @() 
-foreach ($listing in ((ipconfig | findstr [0-9].\.))) {
-	if ($listing -match "Address" ){ 	$SelfList += $listing.Split()[-1] }
-} 
+$SelfList = (Get-NetIPAddress -AddressFamily IPv4).IPAddress
 
 ################################################################################
 # Functions
