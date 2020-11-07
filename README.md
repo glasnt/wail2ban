@@ -92,11 +92,13 @@ I've added a script that will grep the wail2ban log file, and generate some nice
 If you want to enable this, grok the main wail2ban.ps1 script for the call to `wail2ban_htmlgen.ps1`, and enable it (remove the comment)
 
 
-ongoing work 
-------------
+limitations
+-----------
 
-This script has room for improvement. Presently, it only handles Windows 2008-style firewall usage. This can be expanded by changing the code near the `BLOCK_TYPE` variable, to overload it. 
+There can be improvements relating to the service-like execution of this script, so it's always running. This can be acheieved using something like [non-sucking service manager](http://nssm.cc/), but that is left as an exercise for the reader. 
 
-There can also be work relating to the service-like execution of this script, so it's always running. This can be acheieved using something like [non-sucking service manager](http://nssm.cc/), but that is left as an exercise for the reader. 
-
-
+Update 2020: There have been several on and off repo communications saying this code is still useful! I don't have any way to test the following, but hopefully the following may help: 
+ 
+ * Thanks to Marco Jonas, `BLOCK_TYPE` is set to `netsh`, which I presume still exists.
+ * Thanks to Gl0, you can add SSL RDP Login support with [this patch](https://github.com/glasnt/wail2ban/pull/13/files)
+ * Thanks to kentuckytech, add `-executionpolicy bypass -file` to the .bat file if you require a bypass.
